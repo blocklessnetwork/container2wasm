@@ -98,8 +98,10 @@ func main() {
 		if *wasmtimeCli13 {
 			cmd = exec.Command("wasmtime", append([]string{"run", "--tcplisten=" + *wasiAddr, "--env='LISTEN_FDS=1'", "--"}, args...)...)
 		} else {
-			cmd = exec.Command("wasmtime", append([]string{"run", "-S", "preview2=n", "-S", "tcplisten=" + *wasiAddr, "--env='LISTEN_FDS=1'", "--"}, args...)...)
+			// cmd = exec.Command("wasmtime", append([]string{"run", "-S", "preview2=n", "-S", "tcplisten=" + *wasiAddr, "--env='LISTEN_FDS=1'", "--"}, args...)...)
+			cmd = exec.Command("/home/join/bls-runtime/target/debug/bls-runtime", append([]string{"--tcplisten=" + *wasiAddr, "--env='LISTEN_FDS=1'"}, args...)...)
 		}
+		
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
