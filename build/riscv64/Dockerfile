@@ -37,6 +37,8 @@ WORKDIR /work-buildlinux/linux
 COPY --link --from=linux_assets /assets/config/tinyemu/linux_rv64_config ./.config
 RUN make ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- olddefconfig
 
+FROM gcc-riscv64-linux-gnu-base AS linux-riscv64-dev-common
+
 FROM scratch AS linux-riscv64
 COPY --link --from=linux-riscv64-dev /out/Image /out/Image
 COPY --link --from=linux-riscv64-config-dev /work-buildlinux/linux/.config /
