@@ -9,4 +9,11 @@ build-linux:
 	if [[ ! -f busybox-1.36.1.tar.bz ]]; then \
 		curl -Lo busybox-1.36.1.tar.bz https://busybox.net/downloads/busybox-1.36.1.tar.bz2 \
 	; fi
-	docker build -f Dockerfile .
+
+	if [[ ! -f tini.tar.gz ]]; then \
+		curl -Lo tini.tar.gz https://github.com/krallin/tini/archive/refs/tags/v0.19.0.tar.gz \
+	; fi
+	if [[ ! -f runc.tar.gz ]]; then \
+		curl -Lo runc.tar.gz https://github.com/opencontainers/runc/archive/refs/tags/v1.1.12.tar.gz \
+	; fi
+	docker build --build-arg TARGETARCH=amd64 -f Dockerfile .

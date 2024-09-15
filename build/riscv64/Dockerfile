@@ -1,6 +1,12 @@
 ARG SOURCE_REPO=git@github.com:ktock/container2wasm.git
 ARG SOURCE_REPO_VERSION=v0.6.5
 
+ARG LINUX_LOGLEVEL=7
+ARG INIT_DEBUG=true
+ARG VM_MEMORY_SIZE_MB=128
+
+ARG BINFMT_VERSION=qemu-v6.1.0
+
 FROM scratch AS linux_assets
 COPY . .
 
@@ -10,9 +16,12 @@ COPY . .
 # RUN apt-get update && apt-get install -y git
 #RUN git clone -b ${SOURCE_REPO_VERSION} ${SOURCE_REPO} /assets
 
+FROM ubuntu:22.04 as ubuntu-base
+RUN apt-get update -y
 
-FROM ubuntu:22.04 AS gcc-riscv64-linux-gnu-base
-RUN apt-get update && apt-get install -y gcc-riscv64-linux-gnu libc-dev-riscv64-cross git make
+
+FROM ubuntu-base AS gcc-riscv64-linux-gnu-base
+RUN apt-get install -y gcc-riscv64-linux-gnu libc-dev-riscv64-cross git make
 
 FROM gcc-riscv64-linux-gnu-base AS linux-riscv64-dev-common
 RUN apt-get update && apt-get install -y gperf flex bison bc
@@ -49,10 +58,67 @@ RUN make LDFLAGS=--static -j$(nproc)
 RUN for i in $(./busybox --list) ; do ln -s busybox /out/bin/$i ; done
 RUN mkdir -p /out/usr/share/udhcpc/ && cp ./examples/udhcp/simple.script /out/usr/share/udhcpc/default.script
 
+FROM gcc-riscv64-linux-gnu-base AS tini-riscv64-dev
+# https://github.com/krallin/tini#building-tini
+RUN apt-get update -y && apt-get install -y cmake
+ENV CFLAGS="-DPR_SET_CHILD_SUBREAPER=36 -DPR_GET_CHILD_SUBREAPER=37"
+WORKDIR /work
+COPY --link --from=linux_assets /tini.tar.gz /work/
+RUN tar xzvf tini.tar.gz && mv tini-0.19.0 tini
+WORKDIR /work/tini
+ENV CC="riscv64-linux-gnu-gcc -static"
+RUN cmake . && make && mkdir /out/ && mv tini /out/
+
+FROM --platform=riscv64 tonistiigi/binfmt:${BINFMT_VERSION} AS binfmt
+FROM scratch AS binfmt-riscv64
+FROM scratch AS binfmt-base
+COPY --link --from=binfmt /usr/bin/binfmt /usr/bin/
+FROM binfmt-base AS binfmt-amd64
+COPY --link --from=binfmt /usr/bin/qemu-x86_64 /usr/bin/
+FROM binfmt-base AS binfmt-aarch64
+COPY --link --from=binfmt /usr/bin/qemu-aarch64 /usr/bin/
+FROM binfmt-base AS binfmt-arm
+COPY --link --from=binfmt /usr/bin/qemu-arm /usr/bin/
+FROM binfmt-base AS binfmt-i386
+COPY --link --from=binfmt /usr/bin/qemu-i386 /usr/bin/
+FROM binfmt-base AS binfmt-mips64
+COPY --link --from=binfmt /usr/bin/qemu-mips64 /usr/bin/
+FROM binfmt-base AS binfmt-ppc64le
+COPY --link --from=binfmt /usr/bin/qemu-ppc64le /usr/bin/
+FROM binfmt-base AS binfmt-s390
+COPY --link --from=binfmt /usr/bin/qemu-s390 /usr/bin/
+FROM binfmt-$TARGETARCH AS binfmt-dev
+
+FROM golang:1.22-bullseye AS golang-base
+FROM golang:1.21-bullseye AS golang-1.21-base
+
+FROM golang-1.21-base AS runc-riscv64-dev
+RUN apt-get update  && apt-get install -y git make gperf
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    tar xzvf runc-1.1.12 runc.tar.gz &&\
+    mv runc-1.1.12  /go/src/github.com/opencontainers/runc &&\
+    git clone https://github.com/opencontainers/runc.git /go/src/github.com/opencontainers/runc && \
+    make static GOARCH=riscv64 CC=riscv64-linux-gnu-gcc EXTRA_LDFLAGS='-s -w' BUILDTAGS="" && \
+    mkdir -p /out/ && mv runc /out/runc
+
+
+FROM ubuntu-base AS rootfs-riscv64-dev
+RUN apt-get install -y mkisofs
+COPY --link --from=busybox-riscv64-dev /out/ /rootfs/
+COPY --link --from=binfmt-dev / /rootfs/
+COPY --link --from=runc-riscv64-dev /out/runc /rootfs/sbin/runc
+#COPY --link --from=bundle-dev /out/ /rootfs/
+#COPY --link --from=init-riscv64-dev /out/init /rootfs/sbin/init
+#COPY --link --from=vmtouch-riscv64-dev /out/vmtouch /rootfs/bin/
+COPY --link --from=tini-riscv64-dev /out/tini /rootfs/sbin/tini
+RUN mkdir -p /rootfs/proc /rootfs/sys /rootfs/mnt /rootfs/run /rootfs/tmp /rootfs/dev /rootfs/var /rootfs/etc && mknod /rootfs/dev/null c 1 3 && chmod 666 /rootfs/dev/null
+RUN mkdir /out/ && mkisofs -l -J -R -o /out/rootfs.bin /rootfs/
+
 FROM scratch AS linux-riscv64
 COPY --link --from=linux-riscv64-dev /out/Image /out/Image
 COPY --link --from=linux-riscv64-config-dev /work-buildlinux/linux/.config /
-COPY --link --from=busybox-riscv64-dev /out/bin /out/bin
-COPY --link --from=busybox-riscv64-dev /out/usr /out/usr
+COPY --link --from=rootfs-riscv64-dev /out/rootfs.bin //outrootfs.bin
+
 
 
