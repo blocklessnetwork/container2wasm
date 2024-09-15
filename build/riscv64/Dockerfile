@@ -39,7 +39,7 @@ FROM gcc-riscv64-linux-gnu-base AS busybox-riscv64-dev
 RUN apt-get update -y && apt-get install -y gcc bzip2
 WORKDIR /work
 COPY --link --from=linux_assets /busybox-1.36.1.tar.bz /work/
-RUN tar xjvf busybox-1.36.1.tar.bz && mv busybox-1.36.1.tar.bz busybox
+RUN tar xjvf busybox-1.36.1.tar.bz && mv busybox-1.36.1 busybox
 WORKDIR /work/busybox
 RUN make CROSS_COMPILE=riscv64-linux-gnu- LDFLAGS=--static defconfig
 RUN make CROSS_COMPILE=riscv64-linux-gnu- LDFLAGS=--static -j$(nproc)
@@ -52,5 +52,7 @@ RUN mkdir -p /out/usr/share/udhcpc/ && cp ./examples/udhcp/simple.script /out/us
 FROM scratch AS linux-riscv64
 COPY --link --from=linux-riscv64-dev /out/Image /out/Image
 COPY --link --from=linux-riscv64-config-dev /work-buildlinux/linux/.config /
+COPY --link --from=busybox-riscv64-dev /out/bin /out/bin
+COPY --link --from=busybox-riscv64-dev /out/usr /out/usr
 
 
