@@ -16,4 +16,7 @@ build-linux:
 	if [[ ! -f runc.tar.gz ]]; then \
 		curl -Lo runc.tar.gz https://github.com/opencontainers/runc/archive/refs/tags/v1.1.12.tar.gz \
 	; fi
+	if [[ ! -f vmtouch.tar.gz ]]; then \
+		curl -Lo vmtouch.tar.gz https://github.com/hoytech/vmtouch/archive/refs/tags/v1.3.1.tar.gz \
+	; fi
 	docker build --build-arg TARGETARCH=amd64 -f Dockerfile .

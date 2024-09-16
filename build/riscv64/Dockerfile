@@ -24,7 +24,7 @@ FROM ubuntu-base AS gcc-riscv64-linux-gnu-base
 RUN apt-get install -y gcc-riscv64-linux-gnu libc-dev-riscv64-cross git make
 
 FROM gcc-riscv64-linux-gnu-base AS linux-riscv64-dev-common
-RUN apt-get update && apt-get install -y gperf flex bison bc
+RUN  apt-get install -y gperf flex bison bc
 WORKDIR /
 RUN mkdir /work-buildlinux
 COPY --link --from=linux_assets /linux.tar.gz /work-buildlinux/
@@ -43,6 +43,7 @@ FROM linux-riscv64-dev-common AS linux-riscv64-config-dev
 WORKDIR /work-buildlinux/linux
 COPY --link --from=linux_assets /assets/config/tinyemu/linux_rv64_config ./.config
 RUN make ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- olddefconfig
+
 
 FROM gcc-riscv64-linux-gnu-base AS busybox-riscv64-dev
 RUN apt-get update -y && apt-get install -y gcc bzip2
@@ -90,18 +91,49 @@ COPY --link --from=binfmt /usr/bin/qemu-s390 /usr/bin/
 FROM binfmt-$TARGETARCH AS binfmt-dev
 
 FROM golang:1.22-bullseye AS golang-base
+RUN apt-get update -y
 FROM golang:1.21-bullseye AS golang-1.21-base
+RUN apt-get update -y 
 
 FROM golang-1.21-base AS runc-riscv64-dev
-RUN apt-get update  && apt-get install -y git make gperf
+RUN apt-get update -y && apt-get install -y gcc-riscv64-linux-gnu libc-dev-riscv64-cross git make gperf
+WORKDIR /
+COPY --link --from=linux_assets /runc.tar.gz .
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
-    tar xzvf runc-1.1.12 runc.tar.gz &&\
-    mv runc-1.1.12  /go/src/github.com/opencontainers/runc &&\
-    git clone https://github.com/opencontainers/runc.git /go/src/github.com/opencontainers/runc && \
+    mkdir -p /go/src/github.com/opencontainers/ && \
+    tar xzvf runc.tar.gz && mv runc-1.1.12  /go/src/github.com/opencontainers/runc &&\
+    cd /go/src/github.com/opencontainers/runc&&\
     make static GOARCH=riscv64 CC=riscv64-linux-gnu-gcc EXTRA_LDFLAGS='-s -w' BUILDTAGS="" && \
     mkdir -p /out/ && mv runc /out/runc
 
+FROM gcc-riscv64-linux-gnu-base AS vmtouch-riscv64-dev
+COPY --link --from=linux_assets /vmtouch.tar.gz .
+RUN tar xzvf vmtouch.tar.gz && mv vmtouch-1.3.1 vmtouch && \
+        cd vmtouch && \
+        CC="riscv64-linux-gnu-gcc -static" make && \
+        mkdir /out && mv vmtouch /out/
+
+FROM golang-base AS init-riscv64-dev
+COPY --link --from=linux_assets /assets/ /work
+WORKDIR /work
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    GOARCH=riscv64 go build -ldflags "-s -w -extldflags '-static'" -tags "osusergo netgo static_build" -o /out/init ./cmd/init
+
+
+FROM golang-base AS bundle-dev
+ARG TARGETPLATFORM
+ARG INIT_DEBUG
+ARG OPTIMIZATION_MODE
+ARG NO_VMTOUCH
+ARG EXTERNAL_BUNDLE
+COPY --link --from=linux_assets /assets /work
+WORKDIR /work
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    go build -o /bin/create-spec ./cmd/create-spec
+COPY --link --from=oci-image-src / /oci
 
 FROM ubuntu-base AS rootfs-riscv64-dev
 RUN apt-get install -y mkisofs
@@ -109,8 +141,8 @@ COPY --link --from=busybox-riscv64-dev /out/ /rootfs/
 COPY --link --from=binfmt-dev / /rootfs/
 COPY --link --from=runc-riscv64-dev /out/runc /rootfs/sbin/runc
 #COPY --link --from=bundle-dev /out/ /rootfs/
-#COPY --link --from=init-riscv64-dev /out/init /rootfs/sbin/init
-#COPY --link --from=vmtouch-riscv64-dev /out/vmtouch /rootfs/bin/
+COPY --link --from=init-riscv64-dev /out/init /rootfs/sbin/init
+COPY --link --from=vmtouch-riscv64-dev /out/vmtouch /rootfs/bin/
 COPY --link --from=tini-riscv64-dev /out/tini /rootfs/sbin/tini
 RUN mkdir -p /rootfs/proc /rootfs/sys /rootfs/mnt /rootfs/run /rootfs/tmp /rootfs/dev /rootfs/var /rootfs/etc && mknod /rootfs/dev/null c 1 3 && chmod 666 /rootfs/dev/null
 RUN mkdir /out/ && mkisofs -l -J -R -o /out/rootfs.bin /rootfs/
