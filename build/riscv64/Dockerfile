@@ -121,36 +121,44 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
     GOARCH=riscv64 go build -ldflags "-s -w -extldflags '-static'" -tags "osusergo netgo static_build" -o /out/init ./cmd/init
 
+FROM gcc-riscv64-linux-gnu-base AS bbl-dev
+WORKDIR /work-buildroot/
+COPY --link --from=linux_assets /riscv-pk /work-buildroot/riscv-pk
+WORKDIR /work-buildroot/riscv-pk
+RUN mkdir build
+WORKDIR /work-buildroot/riscv-pk/build
+RUN ../configure --host=riscv64-linux-gnu
+RUN cat ../machine/htif.c ../bbl/bbl.lds
+# HTIF address needs to be static on TinyEMU
+RUN sed -i 's/volatile uint64_t tohost __attribute__((section(".htif")));/#define tohost *(uint64_t*)0x40008000/' ../machine/htif.c && \
+    sed -i 's/volatile uint64_t fromhost __attribute__((section(".htif")));/#define fromhost *(uint64_t*)0x40008008/' ../machine/htif.c
+RUN make bbl
+RUN riscv64-linux-gnu-objcopy -O binary bbl bbl.bin && \
+    mkdir /out/ && \
+        mv bbl.bin /out/
 
-FROM golang-base AS bundle-dev
-ARG TARGETPLATFORM
-ARG INIT_DEBUG
-ARG OPTIMIZATION_MODE
-ARG NO_VMTOUCH
-ARG EXTERNAL_BUNDLE
-COPY --link --from=linux_assets /assets /work
-WORKDIR /work
-RUN --mount=type=cache,target=/root/.cache/go-build \
-    --mount=type=cache,target=/go/pkg/mod \
-    go build -o /bin/create-spec ./cmd/create-spec
-COPY --link --from=oci-image-src / /oci
+FROM ubuntu:22.04 AS tinyemu-config-dev
+ARG LINUX_LOGLEVEL
+ARG VM_MEMORY_SIZE_MB
+RUN apt-get update && apt-get install -y gettext-base && mkdir /out
+COPY --link --from=linux_assets /assets/config/tinyemu/tinyemu.config.template /
+RUN cat /tinyemu.config.template | LOGLEVEL=$LINUX_LOGLEVEL MEMORY_SIZE=$VM_MEMORY_SIZE_MB envsubst > /out/tinyemu.config
 
-FROM ubuntu-base AS rootfs-riscv64-dev
-RUN apt-get install -y mkisofs
+
+FROM scratch AS linux-riscv64
+COPY --link --from=linux-riscv64-dev /out/Image /out/kImage
+COPY --link --from=linux-riscv64-config-dev /work-buildlinux/linux/.config /
+COPY --link --from=bbl-dev /out/bbl.bin /out/bbl.bin
+COPY --link --from=tinyemu-config-dev /out/tinyemu.config /out/tool/tinyemu.config
+
 COPY --link --from=busybox-riscv64-dev /out/ /rootfs/
 COPY --link --from=binfmt-dev / /rootfs/
 COPY --link --from=runc-riscv64-dev /out/runc /rootfs/sbin/runc
-#COPY --link --from=bundle-dev /out/ /rootfs/
 COPY --link --from=init-riscv64-dev /out/init /rootfs/sbin/init
 COPY --link --from=vmtouch-riscv64-dev /out/vmtouch /rootfs/bin/
 COPY --link --from=tini-riscv64-dev /out/tini /rootfs/sbin/tini
-RUN mkdir -p /rootfs/proc /rootfs/sys /rootfs/mnt /rootfs/run /rootfs/tmp /rootfs/dev /rootfs/var /rootfs/etc && mknod /rootfs/dev/null c 1 3 && chmod 666 /rootfs/dev/null
-RUN mkdir /out/ && mkisofs -l -J -R -o /out/rootfs.bin /rootfs/
+#RUN mkdir -p /rootfs/proc /rootfs/sys /rootfs/mnt /rootfs/run /rootfs/tmp /rootfs/dev /rootfs/var /rootfs/etc && mknod /rootfs/dev/null c 1 3 && chmod 666 /rootfs/dev/null
 
-FROM scratch AS linux-riscv64
-COPY --link --from=linux-riscv64-dev /out/Image /out/Image
-COPY --link --from=linux-riscv64-config-dev /work-buildlinux/linux/.config /
-COPY --link --from=rootfs-riscv64-dev /out/rootfs.bin //outrootfs.bin
 
 
 

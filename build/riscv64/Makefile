@@ -19,4 +19,8 @@ build-linux:
 	if [[ ! -f vmtouch.tar.gz ]]; then \
 		curl -Lo vmtouch.tar.gz https://github.com/hoytech/vmtouch/archive/refs/tags/v1.3.1.tar.gz \
 	; fi
+
+	if [[ ! -d riscv-pk ]]; then \
+		git clone https://github.com/riscv-software-src/riscv-pk && cd riscv-pk && git checkout 7e9b671c0415dfd7b562ac934feb9380075d4aa2 \
+	; fi
 	docker build --build-arg TARGETARCH=amd64 -f Dockerfile .
