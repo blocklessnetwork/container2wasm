@@ -15,7 +15,7 @@ deb http://mirrors.ustc.edu.cn/debian/debian buster-updates main
 EOF
 RUN apt-get update -y
 
-FROM rust-common AS bochs-dev-common
+FROM rust-common AS tinyemu-dev-common
 ARG WASI_VFS_VERSION
 ARG WASI_SDK_VERSION
 ARG WASI_SDK_VERSION_FULL
@@ -44,5 +44,18 @@ RUN cd wasi-vfs &&\
     mkdir -p /tools/wasi-vfs/ && \
     mv target/wasm32-unknown-unknown/debug/libwasi_vfs.a /tools/wasi-vfs/ && \
     cargo clean
+
+WORKDIR /work/
+COPY --link --from=assets tinyemu tinyemu
+COPY --link --from=assets wizer.h /tools/wizer/include/wizer.h
+WORKDIR /work/tinyemu
+RUN make -j $(nproc) -f Makefile \
+    CONFIG_FS_NET= CONFIG_SDL= CONFIG_INT128= CONFIG_X86EMU= CONFIG_SLIRP= \
+    CC="${WASI_SDK_PATH}/bin/clang --sysroot=${WASI_SDK_PATH}/share/wasi-sysroot -D_WASI_EMULATED_SIGNAL -DWASI -I/tools/wizer/include/" \
+    EMU_LIBS="/tools/wasi-vfs/libwasi_vfs.a -lrt" \
+    EMU_OBJS="virtio.o pci.o fs.o cutils.o iomem.o simplefb.o json.o machine.o temu.o wasi.o riscv_machine.o softfp.o riscv_cpu32.o riscv_cpu64.o fs_disk.o"
+
+FROM tinyemu-dev-common 
+RUN ls 
 
 
