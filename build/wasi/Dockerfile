@@ -55,7 +55,9 @@ RUN make -j $(nproc) -f Makefile \
     EMU_LIBS="/tools/wasi-vfs/libwasi_vfs.a -lrt" \
     EMU_OBJS="virtio.o pci.o fs.o cutils.o iomem.o simplefb.o json.o machine.o temu.o wasi.o riscv_machine.o softfp.o riscv_cpu32.o riscv_cpu64.o fs_disk.o"
 
-FROM tinyemu-dev-common 
-RUN ls 
+FROM scratch 
+COPY --link --from=tinyemu-dev-common /tools/wasi-vfs /out/wasi-vfs
+COPY --link --from=tinyemu-dev-common /work/tinyemu/temu /out/temu
+
 
 

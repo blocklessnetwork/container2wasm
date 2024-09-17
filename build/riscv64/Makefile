@@ -23,9 +23,9 @@ build-linux:
 	if [[ ! -d riscv-pk ]]; then \
 		git clone https://github.com/riscv-software-src/riscv-pk && cd riscv-pk && git checkout 7e9b671c0415dfd7b562ac934feb9380075d4aa2 \
 	; fi
-	docker build --build-arg TARGETARCH=amd64 -t joing/blockless-riscv64-linux6.1 -f Dockerfile .
+	docker build --build-arg TARGETARCH=amd64 -t joing/bls-riscv64-linux6.1 -f Dockerfile .
 
 push:
-	docker push joing/blockless-riscv64-linux6.1
+	docker push joing/bls-riscv64-linux6.1
 clean:
 	rm -rf assets  busybox-1.36.1.tar.bz  linux.tar.gz  riscv-pk  runc.tar.gz  tini.tar.gz  vmtouch.tar.gz

@@ -38,4 +38,6 @@ build:
 		git checkout ${TINYEMU_REPO_VERSION} \
 	; fi
 	
-	docker build --progress=plain  -f Dockerfile .
+	docker build -t joing/bls-tinyemu-wasi-19  -f Dockerfile .
+push:
+	docker push joing/bls-tinyemu-wasi-19
