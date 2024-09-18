@@ -1,6 +1,8 @@
 SHELL := /bin/bash
 GRUB_VERSION=2.06
 BUSYBOX_VERSION=1.36.1
+BOCHS_REPO=https://github.com/ktock/Bochs
+BOCHS_REPO_VERSION=a88d1f687ec83ff82b5318f59dcecb8dab44fc83
 IMAGE_NAME=bls-amd64-linux6.1
 
 all: build
@@ -24,6 +26,12 @@ build:
 	; fi
 	if [[ ! -f vmtouch.tar.gz ]]; then \
 		curl -Lo vmtouch.tar.gz https://github.com/hoytech/vmtouch/archive/refs/tags/v1.3.1.tar.gz \
+	; fi
+
+	if [[ ! -d Bochs ]]; then \
+		git clone ${BOCHS_REPO} Bochs  &&\
+		cd Bochs &&\
+		git checkout ${BOCHS_REPO_VERSION} \
 	; fi
 	docker build -t joing/${IMAGE_NAME}  -f Dockerfile .
 	

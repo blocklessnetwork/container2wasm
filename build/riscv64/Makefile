@@ -26,9 +26,11 @@ build-linux:
 	if [[ ! -d riscv-pk ]]; then \
 		git clone https://github.com/riscv-software-src/riscv-pk && cd riscv-pk && git checkout 7e9b671c0415dfd7b562ac934feb9380075d4aa2 \
 	; fi
+	
 	docker build --build-arg TARGETARCH=amd64 -t joing/${IMAGE_NAME} -f Dockerfile .
 
 push:
 	docker push joing/${IMAGE_NAME}
+
 clean:
 	rm -rf assets  busybox-${BUSYBOX_VERSION}.tar.bz  linux.tar.gz  riscv-pk  runc.tar.gz  tini.tar.gz  vmtouch.tar.gz
