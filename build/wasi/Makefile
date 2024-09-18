@@ -9,6 +9,7 @@ BOCHS_REPO_VERSION=a88d1f687ec83ff82b5318f59dcecb8dab44fc83
 TINYEMU_REPO=git@github.com:ktock/tinyemu-c2w.git
 TINYEMU_REPO_VERSION=e4e9bd198f9c0505ab4c77a6a9d038059cd1474a
 WIZER_VERSION=04e49c989542f2bf3a112d60fbf88a62cce2d0d0
+IMAGE_NAME=bls-tinyemu-wasi-19
 
 all: build
 
@@ -47,10 +48,10 @@ build:
 	if [[ ! -f binaryen.tar.gz ]]; then \
 		curl -o binaryen.tar.gz -L https://github.com/WebAssembly/binaryen/releases/download/version_${BINARYEN_VERSION}/binaryen-version_${BINARYEN_VERSION}-x86_64-linux.tar.gz \
 	; fi
-	docker build -t joing/bls-tinyemu-wasi-19  -f Dockerfile .
+	docker build -t joing/${IMAGE_NAME}  -f Dockerfile .
 	
 push:
-	docker push joing/bls-tinyemu-wasi-19
+	docker push joing/${IMAGE_NAME}
 
 clean:
 	rm -rf binaryen.tar.gz tinyemu wasi-vfs wasi-sdk.tar.gz wizer.h Bochs
