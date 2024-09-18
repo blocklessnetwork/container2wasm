@@ -1,6 +1,7 @@
 ARG GRUB_VERSION=2.06
 ARG BUSYBOX_VERSION=1.36.1
 ARG LINUX_LOGLEVEL=7
+ARG VM_MEMORY_SIZE_MB=128
 ARG GOPROXY=https://goproxy.cn
 FROM scratch AS assets
 COPY . .
@@ -121,7 +122,14 @@ RUN CC="x86_64-linux-gnu-gcc" ./configure --enable-x86-64 --with-nogui
 RUN make -j$(nproc) bios/BIOS-bochs-latest bios/VGABIOS-lgpl-latest
 RUN mkdir /out/ && mv bios/BIOS-bochs-latest bios/VGABIOS-lgpl-latest /out/
 
-FROM scratch AS rootfs-amd64-dev
+FROM ubuntu:22.04 AS tinyemu-config-dev
+ARG LINUX_LOGLEVEL
+ARG VM_MEMORY_SIZE_MB
+RUN apt-get update && apt-get install -y gettext-base && mkdir /out
+COPY --link --from=assets /config/tinyemu/tinyemu.config.template /
+RUN cat /tinyemu.config.template | LOGLEVEL=$LINUX_LOGLEVEL MEMORY_SIZE=$VM_MEMORY_SIZE_MB envsubst > /out/tinyemu.config
+
+FROM scratch 
 COPY --link --from=busybox-amd64-dev /out/ /rootfs/
 COPY --link --from=runc-amd64-dev /out/runc /rootfs/sbin/runc
 COPY --link --from=init-amd64-dev /out/init /rootfs/sbin/init
@@ -129,3 +137,4 @@ COPY --link --from=vmtouch-amd64-dev /out/vmtouch /rootfs/bin/
 COPY --link --from=tini-amd64-dev /out/tini /rootfs/sbin/tini
 COPY --link --from=bios-amd64-dev /out/ /pack/
 COPY --link --from=grub-amd64-dev /out/boot.iso /pack/
+COPY --link --from=tinyemu-config-dev /out/tinyemu.config /pack/config
