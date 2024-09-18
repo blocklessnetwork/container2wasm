@@ -47,9 +47,10 @@ build:
 	if [[ ! -f binaryen.tar.gz ]]; then \
 		curl -o binaryen.tar.gz -L https://github.com/WebAssembly/binaryen/releases/download/version_${BINARYEN_VERSION}/binaryen-version_${BINARYEN_VERSION}-x86_64-linux.tar.gz \
 	; fi
-	
-
-	
 	docker build -t joing/bls-tinyemu-wasi-19  -f Dockerfile .
+	
 push:
 	docker push joing/bls-tinyemu-wasi-19
+
+clean:
+	rm -rf binaryen.tar.gz tinyemu wasi-vfs wasi-sdk.tar.gz wizer.h Bochs
