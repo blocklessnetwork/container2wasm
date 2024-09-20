@@ -24,14 +24,14 @@ build:
 		git checkout "${WASI_VFS_VERSION}" \
 	; fi
 
-	if [[ ! -d wasi-vfs ]]; then \
+	if [[ ! -d Bochs ]]; then \
 		git clone ${BOCHS_REPO} /Bochs &&\
 		cd /Bochs &&\
 		git checkout ${BOCHS_REPO_VERSION} \
 	; fi
 
 	if [[ ! -f wizer.h ]]; then \
-		curl -o wizer.h -L https://raw.githubusercontent.com/bytecodealliance/wizer/04e49c989542f2bf3a112d60fbf88a62cce2d0d0/include/wizer.h \
+		curl -o wizer.h -L https://raw.githubusercontent.com/bytecodealliance/wizer/${WIZER_VERSION}/include/wizer.h \
 	; fi
 
 	if [[ ! -d tinyemu ]]; then \
