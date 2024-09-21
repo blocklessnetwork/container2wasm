@@ -26,8 +26,10 @@ registry = "https://mirrors.tuna.tsinghua.edu.cn/git/crates.io-index.git"
 EOF
 RUN cd wasi-vfs &&\
     cargo build --package wasi-vfs-cli --release && \
+    cargo build --package wasi-vfs-cli && \
     mkdir -p /tools/wasi-vfs/  && \
     mv target/release/wasi-vfs /tools/wasi-vfs/ && \
+    mv target/debug/wasi-vfs /tools/wasi-vfs/wasi-vfs-debug && \
     cargo clean
 
 WORKDIR /work
@@ -42,8 +44,10 @@ registry = "https://mirrors.tuna.tsinghua.edu.cn/git/crates.io-index.git"
 EOF
 WORKDIR /work/wizer/
 RUN cargo build --bin wizer --all-features --release && \
+    cargo build --bin wizer --all-features && \
     mkdir -p /tools/wizer/ && \
     mv include target/release/wizer /tools/wizer/ && \
+    mv target/debug/wizer /tools/wizer/wizer-debug && \
     cargo clean
 
 
@@ -56,9 +60,10 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
     go build -o /bin/create-spec ./cmd/create-spec
 
-FROM scratch
+FROM scratch as output
 COPY --link --from=rust-common /tools/wasi-vfs /tools/wasi-vfs
 COPY --link --from=rust-common /tools/wizer /tools/wizer
 COPY --link --from=golang-base /bin/create-spec /tools/create-spec
 
+FROM output
 
