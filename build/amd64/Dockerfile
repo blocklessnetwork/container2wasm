@@ -122,12 +122,11 @@ RUN CC="x86_64-linux-gnu-gcc" ./configure --enable-x86-64 --with-nogui
 RUN make -j$(nproc) bios/BIOS-bochs-latest bios/VGABIOS-lgpl-latest
 RUN mkdir /out/ && mv bios/BIOS-bochs-latest bios/VGABIOS-lgpl-latest /out/
 
-FROM ubuntu:22.04 AS tinyemu-config-dev
-ARG LINUX_LOGLEVEL
+FROM ubuntu:22.04 AS bochs-config-dev
 ARG VM_MEMORY_SIZE_MB
 RUN apt-get update && apt-get install -y gettext-base && mkdir /out
-COPY --link --from=assets /config/tinyemu/tinyemu.config.template /
-RUN cat /tinyemu.config.template | LOGLEVEL=$LINUX_LOGLEVEL MEMORY_SIZE=$VM_MEMORY_SIZE_MB envsubst > /out/tinyemu.config
+COPY --link --from=assets /assets/config/bochs/bochsrc.template /
+RUN cat /bochsrc.template | MEMORY_SIZE=$VM_MEMORY_SIZE_MB envsubst > /out/bochsrc
 
 FROM scratch 
 COPY --link --from=busybox-amd64-dev /out/ /rootfs/
@@ -137,4 +136,4 @@ COPY --link --from=vmtouch-amd64-dev /out/vmtouch /rootfs/bin/
 COPY --link --from=tini-amd64-dev /out/tini /rootfs/sbin/tini
 COPY --link --from=bios-amd64-dev /out/ /pack/
 COPY --link --from=grub-amd64-dev /out/boot.iso /pack/
-COPY --link --from=tinyemu-config-dev /out/tinyemu.config /pack/config
+COPY --link --from=bochs-config-dev /out/bochsrc /pack/
