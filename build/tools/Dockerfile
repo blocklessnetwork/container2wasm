@@ -26,10 +26,8 @@ registry = "https://mirrors.tuna.tsinghua.edu.cn/git/crates.io-index.git"
 EOF
 RUN cd wasi-vfs &&\
     cargo build --package wasi-vfs-cli --release && \
-    cargo build --package wasi-vfs-cli && \
     mkdir -p /tools/wasi-vfs/  && \
     mv target/release/wasi-vfs /tools/wasi-vfs/ && \
-    mv target/debug/wasi-vfs /tools/wasi-vfs/wasi-vfs-debug && \
     cargo clean
 
 WORKDIR /work
@@ -44,7 +42,7 @@ registry = "https://mirrors.tuna.tsinghua.edu.cn/git/crates.io-index.git"
 EOF
 WORKDIR /work/wizer/
 RUN cargo build --bin wizer --all-features --release && \
-    cargo build --bin wizer --all-features && \
+    RUSTFLAGS="-C link-arg=-s" cargo build --bin wizer --all-features && \
     mkdir -p /tools/wizer/ && \
     mv include target/release/wizer /tools/wizer/ && \
     mv target/debug/wizer /tools/wizer/wizer-debug && \
