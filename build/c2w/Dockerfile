@@ -46,4 +46,21 @@ COPY --link --from=joing/bls-amd64-linux6.1 /pack /pack
 COPY --link --from=rootfs-amd64-dev /out/rootfs.bin /pack
 
 
+FROM ubuntu:22.04 AS dev-packed
+ENV WASMTIME_BACKTRACE_DETAILS=1
+COPY --link --from=joing/bls-c2w-tools /tools /tools
+COPY --link --from=vm-amd64-dev /pack /pack
+COPY --link --from=joing/bls-tinyemu-wasi-19 /out/bochs /work/bochs
+WORKDIR /work
 
+RUN mv bochs bochs-org && /tools/wizer/wizer-debug --allow-wasi --wasm-bulk-memory=true -r _start=wizer.resume --mapdir /pack::/pack -o bochs bochs-org
+RUN mkdir /minpack && cp /pack/rootfs.bin /minpack/ && cp /pack/boot.iso /minpack/
+
+RUN /tools/wasi-vfs/wasi-vfs pack bochs --mapdir /pack::/minpack -o packed && mkdir /out && mv packed /out
+
+FROM scratch AS wasi-amd64
+ARG OUTPUT_NAME
+COPY --link --from=dev-packed /out/packed /${OUTPUT_NAME}
+
+
+FROM wasi-amd64
