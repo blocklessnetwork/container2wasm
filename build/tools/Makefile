@@ -18,7 +18,7 @@ build:
 		git checkout "${WIZER_VERSION}" \
 	; fi
 	
-	docker build -t joing/${IMAGE_NAME}  -f Dockerfile .
+	docker build -t joing/${IMAGE_NAME}  -f Dockerfile . --progress=plain
 
 push:
 	docker push joing/${IMAGE_NAME}
