@@ -25,8 +25,8 @@ build:
 	; fi
 
 	if [[ ! -d Bochs ]]; then \
-		git clone ${BOCHS_REPO} /Bochs &&\
-		cd /Bochs &&\
+		git clone ${BOCHS_REPO} Bochs &&\
+		cd Bochs &&\
 		git checkout ${BOCHS_REPO_VERSION} \
 	; fi
 

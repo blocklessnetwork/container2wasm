@@ -86,11 +86,15 @@ RUN tar -C /binaryen -zxvf /work/binaryen.tar.gz
 RUN /binaryen/binaryen-version_${BINARYEN_VERSION}/bin/wasm-opt bochs --asyncify -O2 -o bochs.async --pass-arg=asyncify-ignore-imports
 RUN mv bochs.async bochs
 
+COPY --link --from=joing/bls-c2w-tools /tools /tools
+RUN cp bochs bochs-org && /tools/wizer/wizer --allow-wasi --wasm-bulk-memory=true -r _start=wizer.resume --mapdir /pack::/pack -o bochs_wizer bochs-org
+
 
 FROM scratch 
 COPY --link --from=tinyemu-dev-common /tools/wasi-vfs /out/wasi-vfs
 COPY --link --from=tinyemu-dev-common /work/tinyemu/temu /out/temu
-COPY --link --from=tinyemu-dev-common /work/Bochs/bochs /out/bochs
+COPY --link --from=tinyemu-dev-common /work/Bochs/bochs/bochs_wizer /out/bochs_wizer
+COPY --link --from=tinyemu-dev-common /work/Bochs/bochs/bochs /out/bochs
 
 
 
