@@ -3,6 +3,7 @@ ARG INIT_DEBUG=false
 ARG NO_VMTOUCH=
 ARG EXTERNAL_BUNDLE=
 ARG TARGETPLATFORM=amd64
+ARG OUTPUT_NAME=bls-image.wasm
 
 FROM scratch as assets
 COPY . .
