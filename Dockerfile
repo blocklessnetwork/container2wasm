@@ -26,8 +26,8 @@ ARG OPTIMIZATION_MODE=wizer # "wizer" or "native"
 ARG TINYEMU_REPO=https://github.com/ktock/tinyemu-c2w
 ARG TINYEMU_REPO_VERSION=e4e9bd198f9c0505ab4c77a6a9d038059cd1474a
 
-ARG BOCHS_REPO=https://github.com/ktock/Bochs
-ARG BOCHS_REPO_VERSION=a88d1f687ec83ff82b5318f59dcecb8dab44fc83
+ARG BOCHS_REPO=https://github.com/blocklessnetwork/bls-bochs.git
+ARG BOCHS_REPO_VERSION=main
 
 ARG SOURCE_REPO=https://github.com/ktock/container2wasm
 ARG SOURCE_REPO_VERSION=v0.6.5
